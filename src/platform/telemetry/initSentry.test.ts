@@ -1,9 +1,11 @@
 import type {
   browserApiErrorsIntegration as sentryBrowserApiErrorsIntegration,
+  ErrorEvent,
+  EventHint,
   init as sentryInitContract
 } from '@sentry/vue'
 import { createApp } from 'vue'
-import { expect, it, vi } from 'vitest'
+import { beforeEach, expect, it, vi } from 'vitest'
 
 const { sentryInit, browserApiErrorsIntegration } = vi.hoisted(() => ({
   sentryInit: vi.fn<typeof sentryInitContract>(),
@@ -16,9 +18,10 @@ vi.mock(import('@sentry/vue'), () => ({
 }))
 
 import { initSentry } from './initSentry'
-import { prepareSentryEvent } from './vueDirectiveErrorDiagnostics'
 
-it('installs the Sentry event preparation pipeline', () => {
+beforeEach(() => sentryInit.mockClear())
+
+function beforeSend() {
   initSentry({
     app: createApp({}),
     dsn: 'https://public@example.invalid/1',
@@ -26,7 +29,40 @@ it('installs the Sentry event preparation pipeline', () => {
     isCloud: false
   })
 
-  expect(sentryInit).toHaveBeenCalledWith(
-    expect.objectContaining({ beforeSend: prepareSentryEvent })
+  const options = sentryInit.mock.lastCall?.[0]
+  if (!options) throw new Error('Sentry was not initialized')
+  return options.beforeSend as (
+    event: ErrorEvent,
+    hint: EventHint
+  ) => ErrorEvent | null
+}
+
+it('filters third-party noise', () => {
+  expect(
+    beforeSend()(
+      {
+        type: undefined,
+        message: 'Invalid call to runtime.sendMessage(). Tab not found.'
+      },
+      {}
+    )
+  ).toBeNull()
+})
+
+it('adds Vue directive diagnostics after filtering', () => {
+  const event = {
+    type: undefined,
+    exception: {
+      values: [
+        {
+          value: 'undefined is not a function',
+          stacktrace: { frames: [{ function: 'withDirectives' }] }
+        }
+      ]
+    }
+  } satisfies ErrorEvent
+
+  expect(beforeSend()(event, {})?.tags?.diagnostic).toBe(
+    'vue_directive_runtime'
   )
 })
