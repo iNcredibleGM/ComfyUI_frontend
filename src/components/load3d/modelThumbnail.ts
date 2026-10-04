@@ -29,8 +29,8 @@ export type ModelThumbnailResult =
 
 /**
  * Render a model to a thumbnail data URL offscreen, without opening the
- * viewer. Starts one render at a time and persists the result through the
- * asset API so other surfaces pick it up.
+ * viewer. Each render starts after the previous one returns an outcome, and
+ * the result is persisted through the asset API so other surfaces pick it up.
  *
  * A render that outlives its deadline, or whose `callerSignal` aborts, is
  * given up on: its viewer is torn down and the queue moves on. Underlying
