@@ -502,7 +502,7 @@ describe('LoaderManager', () => {
         })
       ).resolves.toBe('cancelled')
 
-      expect(eventManager.emitEvent).not.toHaveBeenCalledWith(
+      expect(eventManager.emitEvent).toHaveBeenCalledWith(
         'modelLoadingEnd',
         null
       )
