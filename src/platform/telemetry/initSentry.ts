@@ -7,6 +7,7 @@ import {
   redactTelemetryUrls,
   redactTelemetryValues
 } from './redactTelemetryUrls'
+
 function redactSentryEvent(event: ErrorEvent, hint: EventHint) {
   const filtered = sentryThirdPartyErrorFilter(event, hint)
   if (!filtered) return null
@@ -26,8 +27,14 @@ function redactSentryEvent(event: ErrorEvent, hint: EventHint) {
   if (filtered.request?.url) {
     filtered.request.url = redactTelemetryUrls(filtered.request.url)
   }
-  for (const exception of filtered.exception?.values ?? [])
+  if (filtered.request?.headers?.Referer) {
+    filtered.request.headers.Referer = redactTelemetryUrls(
+      filtered.request.headers.Referer
+    )
+  }
+  for (const exception of filtered.exception?.values ?? []) {
     redactSentryException(exception)
+  }
   return filtered
 }
 

@@ -84,7 +84,6 @@ export const rumBeforeSend: RumBeforeSend = (event) => {
   if (!shouldKeepRumEvent(event)) return false
   if (event.type === 'resource') {
     event.resource.url = redactTelemetryUrls(event.resource.url)
-    event.context = redactTelemetryValues(event.context) ?? {}
   }
   if (event.type === 'error') {
     fingerprintFirebasePendingPromise(event)
@@ -93,14 +92,36 @@ export const rumBeforeSend: RumBeforeSend = (event) => {
     if (event.error.stack) {
       event.error.stack = redactTelemetryUrls(event.error.stack)
     }
-    for (const cause of event.error.causes ?? []) {
-      cause.message = redactTelemetryUrls(cause.message)
-      if (cause.stack) cause.stack = redactTelemetryUrls(cause.stack)
+    if (event.error.handling_stack) {
+      event.error.handling_stack = redactTelemetryUrls(
+        event.error.handling_stack
+      )
     }
     if (event.error.resource?.url) {
       event.error.resource.url = redactTelemetryUrls(event.error.resource.url)
     }
-    event.context = redactTelemetryValues(event.context) ?? {}
   }
+  if (typeof event.view.url === 'string') {
+    event.view.url = redactTelemetryUrls(event.view.url)
+  }
+  if (typeof event.view.referrer === 'string') {
+    event.view.referrer = redactTelemetryUrls(event.view.referrer)
+  }
+  if (event.type === 'action' && event.action.target?.name) {
+    event.action.target.name = redactTelemetryUrls(event.action.target.name)
+  }
+  if (event.type === 'long_task') {
+    for (const script of event.long_task.scripts ?? []) {
+      if (script.source_url) {
+        script.source_url = redactTelemetryUrls(script.source_url)
+      }
+    }
+  }
+  if (event.type === 'view' && event.view.performance?.lcp?.resource_url) {
+    event.view.performance.lcp.resource_url = redactTelemetryUrls(
+      event.view.performance.lcp.resource_url
+    )
+  }
+  event.context = redactTelemetryValues(event.context) ?? {}
   return true
 }

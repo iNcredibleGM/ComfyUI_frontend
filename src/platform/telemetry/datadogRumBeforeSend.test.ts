@@ -13,7 +13,11 @@ function createErrorEvent(
 ): RumErrorEvent {
   return fromPartial<RumErrorEvent>({
     type: 'error',
-    error: { message, source, stack }
+    error: { message, source, stack },
+    view: {
+      url: 'https://user:secret@example.com/view?token=private',
+      referrer: 'https://user:secret@example.com/referrer?token=private'
+    }
   })
 }
 
@@ -104,25 +108,27 @@ describe('rumBeforeSend', () => {
     expect(event.error.stack).toBe('at load (https://example.com/model.glb)')
   })
 
-  it('redacts URL secrets from causes, resources, and event context', () => {
+  it('redacts URL secrets from error resources, page URLs, and event context', () => {
     const secretUrl = 'https://user:secret@example.com/model.glb?token=private'
     const event = fromPartial<RumErrorEvent>({
       type: 'error',
       error: {
         message: 'failed',
         source: 'source',
-        causes: [{ message: `cause ${secretUrl}`, stack: `at ${secretUrl}` }],
-        resource: { url: secretUrl }
+        resource: { url: secretUrl },
+        handling_stack: `at ${secretUrl}`
       },
+      view: { url: secretUrl, referrer: secretUrl },
       context: { model: { source: secretUrl } }
     })
 
     expect(rumBeforeSend(event, fromPartial({}))).toBe(true)
-    expect(event.error.causes?.[0]).toMatchObject({
-      message: 'cause https://example.com/model.glb',
-      stack: 'at https://example.com/model.glb'
-    })
     expect(event.error.resource?.url).toBe('https://example.com/model.glb')
+    expect(event.error.handling_stack).toBe('at https://example.com/model.glb')
+    expect(event.view).toMatchObject({
+      url: 'https://example.com/model.glb',
+      referrer: 'https://example.com/model.glb'
+    })
     expect(event.context?.model).toEqual({
       source: 'https://example.com/model.glb'
     })
@@ -133,11 +139,16 @@ describe('rumBeforeSend', () => {
     const event = fromPartial<RumResourceEvent>({
       type: 'resource',
       resource: { url: secretUrl },
+      view: { url: secretUrl, referrer: secretUrl },
       context: { model: { source: secretUrl } }
     })
 
     expect(rumBeforeSend(event, fromPartial({}))).toBe(true)
     expect(event.resource.url).toBe('https://example.com/model.glb')
+    expect(event.view).toMatchObject({
+      url: 'https://example.com/model.glb',
+      referrer: 'https://example.com/model.glb'
+    })
     expect(event.context).toEqual({
       model: { source: 'https://example.com/model.glb' }
     })

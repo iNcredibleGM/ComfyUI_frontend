@@ -4,7 +4,7 @@ export function redactTelemetryUrls(text: string): string {
 }
 
 const URL_TOKEN_PATTERN =
-  /(?:https?:)?\/\/[^\s"'<>]+|\/(?!\/|https?:\/\/)[A-Za-z0-9._~%-][^\s"'<>]*|\b[A-Za-z0-9_~%-]+(?:\.[A-Za-z0-9._~%-]+|\/[A-Za-z0-9._~%-]+)+[?#][^\s"'<>]*/g
+  /(?:https?:)?\/\/[^\s"'<>]+|\/(?!\/|https?:\/\/)[A-Za-z0-9._~%-]{2}[^\s"'<>]*|\b[A-Za-z0-9_~%-]+\.[A-Za-z0-9._~%-]+(?:\/[A-Za-z0-9._~%-]+)*[?#][^\s"'<>]*/g
 
 function redactUrlToken(token: string): string {
   let redacted = ''
@@ -164,9 +164,8 @@ function redactClassifiedValue(
       return redactTelemetryUrls(classification.value.href)
     case 'plain':
       return redactPlainObject(value, context, depth)
-    case 'unsafe':
-      return REDACTION_SENTINEL
     case 'other':
+    case 'unsafe':
       return REDACTION_SENTINEL
   }
 }

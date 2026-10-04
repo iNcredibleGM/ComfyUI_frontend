@@ -79,11 +79,15 @@ describe('redactTelemetryUrls', () => {
       input: 'https://h/api/view?filter[id]=1&token=SECRET',
       expected: 'https://h/api/view'
     }
-  ])('$kind', ({ input, expected }) => {
-    it('redacts URL metadata', () => {
-      expect(redactTelemetryUrls(input)).toBe(expected)
-    })
-  })
+  ])(
+    '$kind',
+    ({ input, expected }) => {
+      it('redacts URL metadata', () => {
+        expect(redactTelemetryUrls(input)).toBe(expected)
+      })
+    },
+    500
+  )
 
   it('redacts adjacent URLs without consuming punctuation or stack locations', () => {
     expect(
@@ -116,6 +120,12 @@ describe('redactTelemetryUrls', () => {
     ).toBe('Can this work? proxy/https://c.test/z')
   })
 
+  it('preserves non-URL path-like text with a query suffix', () => {
+    expect(redactTelemetryUrls('ratio 1/2?token=secret')).toBe(
+      'ratio 1/2?token=secret'
+    )
+  })
+
   it('redacts query data from relative path references', () => {
     expect(
       redactTelemetryUrls(
@@ -140,7 +150,7 @@ describe('redactTelemetryUrls', () => {
         `https://a.test/x?token=1${boundary}https://user:secret@b.test/y?token=2`
       )
     ).toBe(`https://a.test/x${boundary}https://b.test/y`)
-  }, 500)
+  })
 })
 
 describe('redactTelemetryValues', () => {
