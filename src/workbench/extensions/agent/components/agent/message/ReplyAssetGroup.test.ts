@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { i18n } from '@/i18n'
 import { useDialogStore } from '@/stores/dialogStore'
-import type { ModelThumbnailResult } from '@/components/load3d/modelThumbnail'
+import type {
+  generateModelThumbnail as generateModelThumbnailContract,
+  ModelThumbnailResult
+} from '@/components/load3d/modelThumbnail'
 
 import type { ReplyAsset } from '../../../utils/replyAssets'
 import ReplyAssetGroup from './ReplyAssetGroup.vue'
@@ -23,7 +26,9 @@ vi.mock<unknown>(import('@/platform/assets/utils/assetPreviewUtil'), () => ({
 }))
 
 const generateModelThumbnail = vi.hoisted(() =>
-  vi.fn(async (): Promise<ModelThumbnailResult> => ({ status: 'failed' }))
+  vi.fn<typeof generateModelThumbnailContract>(
+    async (): Promise<ModelThumbnailResult> => ({ status: 'failed' })
+  )
 )
 vi.mock(import('@/components/load3d/modelThumbnail'), () => ({
   generateModelThumbnail
@@ -247,8 +252,45 @@ describe('ReplyAssetGroup', () => {
     expect(thumb).toHaveAttribute('src', 'data:image/png;base64,gen')
     expect(generateModelThumbnail).toHaveBeenCalledWith(
       'https://x/mesh.glb',
-      'mesh.glb'
+      'mesh.glb',
+      expect.any(AbortSignal)
     )
+  })
+
+  it('cancels thumbnail rendering on teardown and remounts with a fresh signal', async () => {
+    isAssetPreviewSupported.mockReturnValue(true)
+    generateModelThumbnail.mockImplementationOnce(
+      async (_url, _filename, signal) =>
+        new Promise<ModelThumbnailResult>((resolve) => {
+          signal?.addEventListener(
+            'abort',
+            () => resolve({ status: 'cancelled' }),
+            { once: true }
+          )
+        })
+    )
+
+    const first = renderGroup([model])
+    await waitFor(() => expect(generateModelThumbnail).toHaveBeenCalledOnce())
+    const firstSignal = generateModelThumbnail.mock.calls[0][2]
+
+    first.unmount()
+
+    expect(firstSignal).toBeInstanceOf(AbortSignal)
+    expect(firstSignal?.aborted).toBe(true)
+
+    generateModelThumbnail.mockResolvedValueOnce({
+      status: 'rendered',
+      dataUrl: 'data:image/png;base64,remounted'
+    })
+    renderGroup([model])
+
+    const thumbnail = await screen.findByRole('img', { name: 'mesh.glb' })
+    const secondSignal = generateModelThumbnail.mock.calls[1][2]
+    expect(secondSignal).toBeInstanceOf(AbortSignal)
+    expect(secondSignal).not.toBe(firstSignal)
+    expect(secondSignal?.aborted).toBe(false)
+    expect(thumbnail).toHaveAttribute('src', 'data:image/png;base64,remounted')
   })
 
   it('refreshes the tile thumbnail after the viewer closes', async () => {
