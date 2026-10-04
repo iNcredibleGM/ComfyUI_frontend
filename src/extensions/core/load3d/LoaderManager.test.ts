@@ -681,9 +681,6 @@ describe('LoaderManager', () => {
       resolveFirst(firstModel)
       await Promise.all([firstPromise, secondPromise])
 
-      // The manager was never disposed (still live) — the old narrowed
-      // guard (`result && this.disposed`) would have skipped disposal here
-      // and leaked the stale geometry/material.
       expect(disposeGeometry).toHaveBeenCalledOnce()
       expect(disposeMaterial).toHaveBeenCalledOnce()
       expect(meshDisposeModel).toHaveBeenCalledWith(firstModel)
