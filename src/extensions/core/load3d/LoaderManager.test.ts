@@ -633,10 +633,6 @@ describe('LoaderManager', () => {
         lm.loadModel('api/view?type=output', 'scene.glb', { silent: true })
       ).rejects.toThrow(/No model was produced/)
       expect(useToastStore().addAlert).not.toHaveBeenCalled()
-      // The URL may carry credentials (e.g. a signed query string) — a
-      // silent load must never log it to the console on the caller's
-      // behalf, matching the "never embeds the requested URL" guarantee
-      // for the thrown-error path below.
       expect(consoleError).not.toHaveBeenCalled()
     })
 
