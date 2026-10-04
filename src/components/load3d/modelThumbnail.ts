@@ -112,7 +112,7 @@ function renderThumbnailJob(
   })()
   const result = new Promise<string>((resolve, reject) => {
     let settled = false
-    const finish = (): boolean => {
+    function finish(): boolean {
       if (settled) return false
       settled = true
       clearTimeout(timer)
@@ -120,17 +120,19 @@ function renderThumbnailJob(
       deadline.abort()
       return true
     }
-    const settleResolved = (dataUrl: string) => {
+    function settleResolved(dataUrl: string): void {
       if (finish()) resolve(dataUrl)
     }
-    const settleRejected = (error: Error) => {
+    function settleRejected(error: Error): void {
       if (finish()) reject(error)
     }
-    const onCallerAbort = () => settleRejected(RENDER_CANCELLED)
-    const timer = setTimeout(
-      () => settleRejected(new TimeoutError()),
-      MODEL_LOAD_TIMEOUT_MS
-    )
+    function onCallerAbort(): void {
+      settleRejected(RENDER_CANCELLED)
+    }
+    function onTimeout(): void {
+      settleRejected(new TimeoutError())
+    }
+    const timer = setTimeout(onTimeout, MODEL_LOAD_TIMEOUT_MS)
     callerSignal?.addEventListener('abort', onCallerAbort, { once: true })
 
     void operation.then(settleResolved, (error: unknown) =>
