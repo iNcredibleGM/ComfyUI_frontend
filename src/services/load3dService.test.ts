@@ -699,18 +699,10 @@ describe('load3dService', () => {
 
       const firstMesh = firstClone.children[0]
       const secondMesh = secondClone.children[0]
-      if (!(firstMesh instanceof THREE.Mesh)) {
-        throw new Error('Expected the first clone child to be a mesh')
-      }
-      if (!(secondMesh instanceof THREE.Mesh)) {
-        throw new Error('Expected the second clone child to be a mesh')
-      }
-      if (!Array.isArray(firstMesh.material)) {
-        throw new Error('Expected the first clone to keep a material array')
-      }
-      if (!Array.isArray(secondMesh.material)) {
-        throw new Error('Expected the second clone to keep a material array')
-      }
+      assert.instanceOf(firstMesh, THREE.Mesh)
+      assert.instanceOf(secondMesh, THREE.Mesh)
+      assert(Array.isArray(firstMesh.material))
+      assert(Array.isArray(secondMesh.material))
       const firstMaterials = firstMesh.material
       const secondMaterials = secondMesh.material
       const [firstMapped, firstNormal] = firstMaterials
