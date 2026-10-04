@@ -394,6 +394,7 @@ describe('load3dService', () => {
           THREE.Material | THREE.Material[]
         >
         clearQuadWireframe: ReturnType<typeof vi.fn>
+        disposeCurrentModel: ReturnType<typeof vi.fn>
       }
       gizmoManager: {
         isEnabled: () => boolean
@@ -452,8 +453,14 @@ describe('load3dService', () => {
           this.appliedTexture = texture
         },
         originalMaterials,
-        clearQuadWireframe: vi.fn()
+        clearQuadWireframe: vi.fn(),
+        disposeCurrentModel: vi.fn()
       }
+      modelManager.disposeCurrentModel.mockImplementation(() => {
+        if (!modelManager.currentModel) return
+        sceneRemove(modelManager.currentModel)
+        modelManager.currentModel = null
+      })
       const animationManager = {
         setupModelAnimations: vi.fn()
       }
@@ -591,18 +598,20 @@ describe('load3dService', () => {
       expect(state.sceneAdded).toContain(clone)
     })
 
-    it('drops the target quad wireframe state along with its existing model', async () => {
+    it('disposes the target model before adding its replacement', async () => {
       const source = makeSource({ currentModel: makeModel() })
       const { target, state } = makeTarget({ existingModel: makeModel() })
-      const removeFromScene = vi.mocked(target.getSceneManager().scene.remove)
       skeletonCloneMock.mockReturnValue(makeModel())
 
       await useLoad3dService().copyLoad3dState(source, target)
 
-      expect(state.modelManager.clearQuadWireframe).toHaveBeenCalledOnce()
+      expect(state.modelManager.disposeCurrentModel).toHaveBeenCalledOnce()
       expect(
-        state.modelManager.clearQuadWireframe.mock.invocationCallOrder[0]
-      ).toBeLessThan(removeFromScene.mock.invocationCallOrder[0])
+        state.modelManager.disposeCurrentModel.mock.invocationCallOrder[0]
+      ).toBeLessThan(
+        vi.mocked(target.getSceneManager().scene.add).mock
+          .invocationCallOrder[0]
+      )
     })
 
     it('hands the viewer a clone in its original materials without wireframe overlays', async () => {

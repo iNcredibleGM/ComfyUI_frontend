@@ -226,12 +226,7 @@ class Load3dService {
     target.getGizmoManager().detach()
 
     if (sourceModel) {
-      // Remove existing model from target scene before adding new one
-      const existingModel = target.getModelManager().currentModel
-      if (existingModel) {
-        target.getModelManager().clearQuadWireframe()
-        target.getSceneManager().scene.remove(existingModel)
-      }
+      target.getModelManager().disposeCurrentModel()
 
       if (source.isSplatModel()) {
         const originalURL = source.modelManager.originalURL

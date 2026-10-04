@@ -232,6 +232,7 @@ export interface ModelManagerInterface {
   init(): void
   dispose(): void
   clearModel(): void
+  disposeCurrentModel(): void
   reset(): void
   setupModel(model: THREE.Object3D): Promise<void>
   addModelToScene(model: THREE.Object3D): void

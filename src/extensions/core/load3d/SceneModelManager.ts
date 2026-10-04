@@ -428,6 +428,22 @@ export class SceneModelManager implements ModelManagerInterface {
     this.setMaterialMode('original')
   }
 
+  disposeCurrentModel(): void {
+    const model = this.currentModel
+    if (!model) return
+
+    this.quadWireframe.clear()
+    this.scene.remove(model)
+    this.restoreOriginalMaterials(model)
+    disposeObject3D(
+      model,
+      this.preservedMaterials,
+      this.appliedTexturesToPreserve()
+    )
+    this.disposeModelViaAdapter(model)
+    this.currentModel = null
+  }
+
   clearModel(): void {
     this.quadWireframe.clear()
     const objectsToRemove: THREE.Object3D[] = []

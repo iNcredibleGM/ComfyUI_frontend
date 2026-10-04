@@ -1,6 +1,6 @@
 import { SparkRenderer } from '@sparkjsdev/spark'
 import * as THREE from 'three'
-import { describe, expect, it, vi } from 'vitest'
+import { assert, describe, expect, it, vi } from 'vitest'
 
 import { createRendererViewState } from '@/renderer/three/sharedWebGLRenderer'
 
@@ -35,6 +35,7 @@ function createManager(
     scene?: THREE.Scene
     eventManager?: EventManagerInterface
     capabilities?: Partial<ModelAdapterCapabilities>
+    disposeModelViaAdapter?: (model: THREE.Object3D) => void
   } = {}
 ) {
   const scene = overrides.scene ?? new THREE.Scene()
@@ -56,7 +57,9 @@ function createManager(
     getActiveCamera,
     setupCamera,
     setupGizmo,
-    () => capabilities
+    () => capabilities,
+    () => null,
+    overrides.disposeModelViaAdapter
   )
 
   return {
@@ -488,6 +491,28 @@ describe('SceneModelManager', () => {
       manager.clearModel()
 
       expect(scene.children).toContain(sparkRenderer)
+    })
+  })
+
+  describe('disposeCurrentModel', () => {
+    it('removes and releases the current model through its adapter', async () => {
+      const disposeModelViaAdapter = vi.fn()
+      const { manager, scene } = createManager({ disposeModelViaAdapter })
+      const model = createMeshModel()
+      const mesh = model.children[0]
+      assert.instanceOf(mesh, THREE.Mesh)
+      assert(!Array.isArray(mesh.material))
+      const geometryDispose = vi.spyOn(mesh.geometry, 'dispose')
+      const materialDispose = vi.spyOn(mesh.material, 'dispose')
+      await manager.setupModel(model)
+
+      manager.disposeCurrentModel()
+
+      expect(manager.currentModel).toBeNull()
+      expect(scene.children).not.toContain(model)
+      expect(geometryDispose).toHaveBeenCalledOnce()
+      expect(materialDispose).toHaveBeenCalledOnce()
+      expect(disposeModelViaAdapter).toHaveBeenCalledWith(model)
     })
   })
 
