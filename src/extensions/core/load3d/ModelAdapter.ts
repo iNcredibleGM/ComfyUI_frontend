@@ -145,10 +145,11 @@ export interface ModelAdapter {
 
 export async function fetchModelData(
   path: string,
-  filename: string
+  filename: string,
+  signal?: AbortSignal
 ): Promise<ArrayBuffer> {
   const route = '/' + path.replace(/^api\//, '') + encodeURIComponent(filename)
-  const response = await api.fetchApi(route)
+  const response = await api.fetchApi(route, { signal })
   if (!response.ok) {
     throw new Error(`Failed to fetch model: ${response.status}`)
   }

@@ -122,7 +122,8 @@ export class LoaderManager implements LoaderManagerInterface {
         url,
         fileExtension,
         loadId,
-        options?.silent
+        options?.silent,
+        options?.signal
       )
       return await this.publishLoadResult(
         result,
@@ -244,7 +245,8 @@ export class LoaderManager implements LoaderManagerInterface {
     url: string,
     fileExtension: string,
     loadId: number,
-    silent?: boolean
+    silent?: boolean,
+    signal?: AbortSignal
   ): Promise<{
     object: THREE.Object3D
     adapter: ModelAdapter
@@ -274,7 +276,8 @@ export class LoaderManager implements LoaderManagerInterface {
       '&filename='
 
     let bytesPromise: Promise<ArrayBuffer> | null = null
-    const fetchBytes = () => (bytesPromise ??= fetchModelData(path, filename))
+    const fetchBytes = () =>
+      (bytesPromise ??= fetchModelData(path, filename, signal))
 
     const adapter = await this.pickAdapter(fileExtension, fetchBytes)
     if (!adapter) return null

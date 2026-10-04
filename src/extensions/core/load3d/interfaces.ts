@@ -248,6 +248,8 @@ export interface ModelManagerInterface {
 }
 
 export interface LoadModelOptions {
+  /** Cancels network work when the caller abandons the load. */
+  signal?: AbortSignal
   /**
    * When true, suppress the user-facing toast for file-not-found
    * (HTTP 404) errors. Other errors (parse failures, network drops)

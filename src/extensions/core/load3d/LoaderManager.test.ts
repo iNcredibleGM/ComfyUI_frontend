@@ -470,6 +470,21 @@ describe('LoaderManager', () => {
       expect(fetchModelData).toHaveBeenCalledTimes(1)
     })
 
+    it('forwards the caller signal to model data fetches', async () => {
+      const controller = new AbortController()
+      const { lm } = makeLoaderManager()
+
+      await lm.loadModel('api/view?filename=scan.ply', undefined, {
+        signal: controller.signal
+      })
+
+      expect(fetchModelData).toHaveBeenCalledWith(
+        'api/view?type=input&subfolder=&filename=',
+        'scan.ply',
+        controller.signal
+      )
+    })
+
     it('dispatches .ply via the adapter matches() tiebreaker, not extension order — a splat adapter whose matches() returns false yields to point-cloud', async () => {
       const modelManager =
         makeModelManagerStub() as unknown as ConstructorParameters<

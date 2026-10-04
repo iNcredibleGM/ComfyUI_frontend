@@ -76,7 +76,7 @@ describe('generateModelThumbnail', () => {
     expect(instance.loadModel).toHaveBeenCalledWith(
       '/api/view?filename=a.glb',
       undefined,
-      { silent: true }
+      { signal: expect.any(AbortSignal), silent: true }
     )
     expect(instance.remove).toHaveBeenCalledTimes(1)
     expect(persistThumbnail).not.toHaveBeenCalled()
@@ -348,6 +348,7 @@ describe('generateModelThumbnail', () => {
     expect(stuck.remove).toHaveBeenCalledTimes(1)
     expect(reportErrorMock).not.toHaveBeenCalled()
     expect(next.loadModel).toHaveBeenCalledWith('/next.glb', undefined, {
+      signal: expect.any(AbortSignal),
       silent: true
     })
     pendingLoad.resolve('cancelled')

@@ -172,7 +172,8 @@ async function renderThumbnailInner(
 
   try {
     const outcome = await load3d.loadModel(modelUrl, undefined, {
-      silent: true
+      silent: true,
+      signal
     })
     if (outcome === 'cancelled') throw RENDER_CANCELLED
     if (outcome !== 'loaded') throw RENDER_FAILED
