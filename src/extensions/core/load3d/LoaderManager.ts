@@ -254,9 +254,8 @@ export class LoaderManager implements LoaderManagerInterface {
     const filename = params.get('filename')
 
     if (!filename) {
-      // Silent loads may carry an untrusted, credential-bearing URL (see the
-      // redaction note in loadModel's catch block) — never log it here on
-      // the caller's behalf.
+      // Silent loads may carry a credential-bearing URL; never log it on the
+      // caller's behalf.
       if (!silent) console.error('Missing filename in URL:', url)
       return null
     }
