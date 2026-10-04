@@ -684,8 +684,6 @@ describe('LoaderManager', () => {
       expect(disposeGeometry).toHaveBeenCalledOnce()
       expect(disposeMaterial).toHaveBeenCalledOnce()
       expect(meshDisposeModel).toHaveBeenCalledWith(firstModel)
-      // The stale load's setOriginalModel write must never have landed —
-      // createLoadContext gates it on loadId.
       expect(modelManager.setOriginalModel).not.toHaveBeenCalledWith(firstModel)
     })
 
