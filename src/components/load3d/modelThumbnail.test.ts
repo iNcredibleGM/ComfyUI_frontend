@@ -44,10 +44,11 @@ function deferred<T>(): {
   promise: Promise<T>
   resolve: (value: T) => void
 } {
-  let resolve!: (value: T) => void
+  let resolve: ((value: T) => void) | undefined
   const promise = new Promise<T>((settle) => {
     resolve = settle
   })
+  if (!resolve) throw new Error('Promise executor did not run synchronously')
   return { promise, resolve }
 }
 
