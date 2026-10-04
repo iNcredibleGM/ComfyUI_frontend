@@ -245,12 +245,6 @@ export class SceneModelManager implements ModelManagerInterface {
     this.occluderMaterial.dispose()
     this.depthMaterial.dispose()
     this.clayMaterial.dispose()
-
-    if (this.appliedTexture && this.ownsAppliedTexture) {
-      this.appliedTexture.dispose()
-    }
-    this.appliedTexture = null
-    this.ownsAppliedTexture = true
   }
 
   createSTLMaterial(): THREE.MeshStandardMaterial {
