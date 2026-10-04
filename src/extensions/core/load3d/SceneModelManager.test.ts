@@ -504,14 +504,21 @@ describe('SceneModelManager', () => {
       assert(!Array.isArray(mesh.material))
       const geometryDispose = vi.spyOn(mesh.geometry, 'dispose')
       const materialDispose = vi.spyOn(mesh.material, 'dispose')
+      const borrowedTexture = new THREE.Texture()
+      const textureDispose = vi.spyOn(borrowedTexture, 'dispose')
+      assert.instanceOf(mesh.material, THREE.MeshStandardMaterial)
+      mesh.material.map = borrowedTexture
       await manager.setupModel(model)
+      manager.borrowAppliedTexture(borrowedTexture)
 
       manager.disposeCurrentModel()
 
       expect(manager.currentModel).toBeNull()
+      expect(manager.appliedTexture).toBeNull()
       expect(scene.children).not.toContain(model)
       expect(geometryDispose).toHaveBeenCalledOnce()
       expect(materialDispose).toHaveBeenCalledOnce()
+      expect(textureDispose).not.toHaveBeenCalled()
       expect(disposeModelViaAdapter).toHaveBeenCalledWith(model)
     })
   })
