@@ -1087,5 +1087,23 @@ describe('SceneModelManager', () => {
       const mainModels = scene.children.filter((c) => c.name === 'MainModel')
       expect(mainModels).toHaveLength(1)
     })
+
+    it('disposes parked original materials while rebuilding', () => {
+      const { manager } = createPLYManager()
+      const model = manager.currentModel
+      assert.instanceOf(model, THREE.Group)
+      const mesh = model.children[0]
+      assert.instanceOf(mesh, THREE.Mesh)
+      assert(!Array.isArray(mesh.material))
+      const originalMaterial = mesh.material
+      const dispose = vi.spyOn(originalMaterial, 'dispose')
+      manager.originalMaterials.set(mesh, originalMaterial)
+      mesh.material = manager.wireframeMaterial
+      manager.materialMode = 'wireframe'
+
+      manager.setMaterialMode('pointCloud')
+
+      expect(dispose).toHaveBeenCalledOnce()
+    })
   })
 })
