@@ -1,6 +1,9 @@
 import vue from '@vitejs/plugin-vue'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
+
+import { repoRoot } from './paths'
 
 export default defineConfig({
   plugins: [vue()],
@@ -30,7 +33,10 @@ export default defineConfig({
     },
     include: ['src/**/*.{test,spec}.ts', 'scripts/**/*.{test,spec}.ts'],
     globals: false,
-    setupFiles: ['../../vitest.timer.setup.ts', './src/test/setup.ts'],
+    setupFiles: [
+      join(repoRoot, 'vitest.timer.setup.ts'),
+      './src/test/setup.ts'
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
