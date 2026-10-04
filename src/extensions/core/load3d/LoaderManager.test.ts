@@ -688,11 +688,6 @@ describe('LoaderManager', () => {
     })
 
     it('disposes textures held by a stale result material, not just the material itself', async () => {
-      // Regression coverage: Material.dispose() releases GPU program/shader
-      // state but not the textures it references — a stale result's
-      // material was disposed but its map/normalMap/etc. textures were
-      // leaked, retaining full-resolution texture memory per superseded
-      // load.
       const { lm, modelManager } = makeLoaderManager()
 
       let resolveFirst!: (value: THREE.Object3D) => void
