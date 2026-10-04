@@ -54,17 +54,17 @@ export class MeshModelAdapter implements ModelAdapter {
     ctx: ModelLoadContext,
     path: string,
     filename: string,
-    fetchBytes?: () => Promise<ArrayBuffer>
+    fetchBytes: () => Promise<ArrayBuffer>
   ): Promise<ModelLoadResult | null> {
     const extension = filename.split('.').pop()?.toLowerCase()
     const object = await (extension === 'stl'
-      ? this.loadSTL(ctx, path, filename, fetchBytes)
+      ? this.loadSTL(ctx, path, fetchBytes)
       : extension === 'fbx'
-        ? this.loadFBX(ctx, path, filename, fetchBytes)
+        ? this.loadFBX(ctx, path, fetchBytes)
         : extension === 'obj'
           ? this.loadOBJ(ctx, path, filename, fetchBytes)
           : extension === 'gltf' || extension === 'glb'
-            ? this.loadGLTF(ctx, path, filename, fetchBytes)
+            ? this.loadGLTF(ctx, path, fetchBytes)
             : Promise.resolve(null))
     return object ? { object, capabilities: this.capabilities } : null
   }
@@ -72,13 +72,10 @@ export class MeshModelAdapter implements ModelAdapter {
   private async loadSTL(
     ctx: ModelLoadContext,
     path: string,
-    filename: string,
-    fetchBytes?: () => Promise<ArrayBuffer>
+    fetchBytes: () => Promise<ArrayBuffer>
   ): Promise<THREE.Object3D> {
     this.stlLoader.setPath(path)
-    const geometry = fetchBytes
-      ? this.stlLoader.parse(await fetchBytes())
-      : await this.stlLoader.loadAsync(filename)
+    const geometry = this.stlLoader.parse(await fetchBytes())
     ctx.setOriginalModel(geometry)
     geometry.computeVertexNormals()
 
@@ -91,17 +88,14 @@ export class MeshModelAdapter implements ModelAdapter {
   private async loadFBX(
     ctx: ModelLoadContext,
     path: string,
-    filename: string,
-    fetchBytes?: () => Promise<ArrayBuffer>
+    fetchBytes: () => Promise<ArrayBuffer>
   ): Promise<THREE.Object3D> {
     this.fbxLoader.setPath(path)
-    const bytes = fetchBytes ? await fetchBytes() : null
-    const fbxModel = bytes
-      ? this.fbxLoader.parse(bytes, path)
-      : await this.fbxLoader.loadAsync(filename)
+    const bytes = await fetchBytes()
+    const fbxModel = this.fbxLoader.parse(bytes, path)
     ctx.setOriginalModel(fbxModel)
 
-    const polygons = bytes && isBinaryFbx(bytes) ? readFbxPolygons(bytes) : []
+    const polygons = isBinaryFbx(bytes) ? readFbxPolygons(bytes) : []
     fbxModel.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         ctx.registerOriginalMaterial(child, child.material)
@@ -120,7 +114,7 @@ export class MeshModelAdapter implements ModelAdapter {
     ctx: ModelLoadContext,
     path: string,
     filename: string,
-    fetchBytes?: () => Promise<ArrayBuffer>
+    fetchBytes: () => Promise<ArrayBuffer>
   ): Promise<THREE.Object3D> {
     this.objLoader.setBaseObject3d(new THREE.Object3D())
 
@@ -140,9 +134,7 @@ export class MeshModelAdapter implements ModelAdapter {
       }
     }
 
-    const model = fetchBytes
-      ? await this.parseOBJ(await fetchBytes())
-      : await this.objLoader.loadAsync(path + encodeURIComponent(filename))
+    const model = await this.parseOBJ(await fetchBytes())
 
     model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -163,13 +155,10 @@ export class MeshModelAdapter implements ModelAdapter {
   private async loadGLTF(
     ctx: ModelLoadContext,
     path: string,
-    filename: string,
-    fetchBytes?: () => Promise<ArrayBuffer>
+    fetchBytes: () => Promise<ArrayBuffer>
   ): Promise<THREE.Object3D> {
     this.gltfLoader.setPath(path)
-    const gltf = fetchBytes
-      ? await this.gltfLoader.parseAsync(await fetchBytes(), path)
-      : await this.gltfLoader.loadAsync(filename)
+    const gltf = await this.gltfLoader.parseAsync(await fetchBytes(), path)
     ctx.setOriginalModel(gltf)
 
     gltf.scene.traverse((child) => {

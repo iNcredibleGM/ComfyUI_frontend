@@ -116,7 +116,7 @@ export interface ModelAdapter {
     ctx: ModelLoadContext,
     path: string,
     filename: string,
-    fetchBytes?: () => Promise<ArrayBuffer>
+    fetchBytes: () => Promise<ArrayBuffer>
   ): Promise<ModelLoadResult | null>
   /**
    * Optional. Return a world-space AABB for the given model. Adapters for
