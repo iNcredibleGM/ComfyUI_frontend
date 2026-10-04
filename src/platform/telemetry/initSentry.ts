@@ -42,7 +42,6 @@ function redactSentryTransaction(event: SentryTransactionEvent) {
   return event
 }
 
-/** Redact the URL-bearing fields an error and a transaction both carry. */
 function redactSharedSentryEventFields(event: Event): void {
   if (event.message) {
     event.message = redactTelemetryUrls(event.message)
