@@ -37,18 +37,9 @@ export class MeshModelAdapter implements ModelAdapter {
   }
 
   private readonly gltfLoader = new GLTFLoader()
-  private readonly objLoader: OBJLoader2Parallel
   private readonly mtlLoader = new MTLLoader()
   private readonly fbxLoader = new FBXLoader()
   private readonly stlLoader = new STLLoader()
-
-  constructor() {
-    this.objLoader = new OBJLoader2Parallel()
-    this.objLoader.setWorkerUrl(
-      true,
-      new URL(OBJLoader2WorkerUrl, import.meta.url)
-    )
-  }
 
   async load(
     ctx: ModelLoadContext,
@@ -116,7 +107,9 @@ export class MeshModelAdapter implements ModelAdapter {
     filename: string,
     fetchBytes: () => Promise<ArrayBuffer>
   ): Promise<THREE.Object3D> {
-    this.objLoader.setBaseObject3d(new THREE.Object3D())
+    const objLoader = new OBJLoader2Parallel()
+    objLoader.setWorkerUrl(true, new URL(OBJLoader2WorkerUrl, import.meta.url))
+    objLoader.setBaseObject3d(new THREE.Object3D())
 
     if (ctx.materialMode === 'original') {
       try {
@@ -126,7 +119,7 @@ export class MeshModelAdapter implements ModelAdapter {
         materials.preload()
         const materialsFromMtl =
           MtlObjBridge.addMaterialsFromMtlLoader(materials)
-        this.objLoader.setMaterials(materialsFromMtl)
+        objLoader.setMaterials(materialsFromMtl)
       } catch {
         console.warn(
           'No MTL file found or error loading it, continuing without materials'
@@ -134,7 +127,7 @@ export class MeshModelAdapter implements ModelAdapter {
       }
     }
 
-    const model = await this.parseOBJ(await fetchBytes())
+    const model = await this.parseOBJ(objLoader, await fetchBytes())
 
     model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -145,10 +138,13 @@ export class MeshModelAdapter implements ModelAdapter {
     return model
   }
 
-  private parseOBJ(bytes: ArrayBuffer): Promise<THREE.Object3D> {
+  private parseOBJ(
+    objLoader: OBJLoader2Parallel,
+    bytes: ArrayBuffer
+  ): Promise<THREE.Object3D> {
     return new Promise((resolve) => {
-      this.objLoader.setCallbackOnLoad(resolve)
-      this.objLoader.parse(bytes)
+      objLoader.setCallbackOnLoad(resolve)
+      objLoader.parse(bytes)
     })
   }
 
