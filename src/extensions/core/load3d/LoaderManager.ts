@@ -283,6 +283,7 @@ export class LoaderManager implements LoaderManagerInterface {
 
     const adapter = await this.pickAdapter(fileExtension, fetchBytes)
     if (!adapter) return null
+    if (this.disposed) return null
 
     const loadResult = await adapter.load(
       this.createLoadContext(loadId),

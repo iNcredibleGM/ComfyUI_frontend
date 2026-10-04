@@ -132,7 +132,16 @@ export function redactTelemetryValues(
 }
 
 export function redactTelemetryError(error: unknown): Error {
-  const source = error instanceof Error ? error : new Error(String(error))
+  let source: Error
+  if (error instanceof Error) {
+    source = error
+  } else {
+    try {
+      source = new Error(String(error))
+    } catch {
+      source = new Error('[Redacted]')
+    }
+  }
   return redactError(
     source,
     {

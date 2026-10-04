@@ -815,6 +815,7 @@ describe('LoaderManager', () => {
       meshLoad.mockReturnValueOnce(pendingLoad)
 
       const load = lm.loadModel('api/view?filename=cube.glb')
+      await vi.waitFor(() => expect(meshLoad).toHaveBeenCalledOnce())
       lm.dispose()
       resolveLoad(loadResult(model))
 
@@ -859,6 +860,7 @@ describe('LoaderManager', () => {
       )
 
       const load = lm.loadModel('api/view?filename=cube.glb')
+      await vi.waitFor(() => expect(meshLoad).toHaveBeenCalledOnce())
       lm.dispose()
       rejectLoad(new Error('connection reset'))
 

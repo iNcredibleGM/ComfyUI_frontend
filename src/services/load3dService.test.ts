@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { assert, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type Load3d from '@/extensions/core/load3d/Load3d'
 import { QuadWireframeOverlay } from '@/extensions/core/load3d/quadWireframe/QuadWireframeManager'
@@ -711,21 +711,24 @@ describe('load3dService', () => {
       if (!Array.isArray(secondMesh.material)) {
         throw new Error('Expected the second clone to keep a material array')
       }
+      const firstMaterials = firstMesh.material
+      const secondMaterials = secondMesh.material
+      const [firstMapped, firstNormal] = firstMaterials
+      const [secondMapped, secondNormal] = secondMaterials
+      assert.instanceOf(firstMapped, THREE.MeshStandardMaterial)
+      assert.instanceOf(firstNormal, THREE.MeshStandardMaterial)
+      assert.instanceOf(secondMapped, THREE.MeshStandardMaterial)
+      assert.instanceOf(secondNormal, THREE.MeshStandardMaterial)
       expect(firstMesh.geometry).not.toBe(geometry)
       expect(secondMesh.geometry).not.toBe(geometry)
       expect(secondMesh.geometry).not.toBe(firstMesh.geometry)
-      expect(firstMesh.material[0]).not.toBe(materials[0])
-      expect(secondMesh.material[0]).not.toBe(firstMesh.material[0])
-      expect(firstMesh.material[0].map).not.toBe(map)
-      expect(secondMesh.material[0].map).not.toBe(firstMesh.material[0].map)
-      expect(firstMesh.material[1].normalMap).not.toBe(normalMap)
-      expect(secondMesh.material[1].normalMap).not.toBe(
-        firstMesh.material[1].normalMap
-      )
-      expect(secondMesh.material).not.toContain(firstMesh.material[0])
-
-      firstMesh.geometry.dispose()
-      firstMesh.material.forEach((material) => material.dispose())
+      expect(firstMapped).not.toBe(materials[0])
+      expect(secondMapped).not.toBe(firstMapped)
+      expect(firstMapped.map).not.toBe(map)
+      expect(secondMapped.map).not.toBe(firstMapped.map)
+      expect(firstNormal.normalMap).not.toBe(normalMap)
+      expect(secondNormal.normalMap).not.toBe(firstNormal.normalMap)
+      expect(secondMaterials).not.toContain(firstMapped)
     })
 
     it('gives copied line primitives independent geometry and material ownership', async () => {
