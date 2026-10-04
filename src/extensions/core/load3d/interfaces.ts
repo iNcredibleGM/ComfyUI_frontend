@@ -273,17 +273,16 @@ export interface SceneOverlay {
 }
 
 /**
- * Outcome of a `loadModel` call. A caller that ignores this and assumes
- * success can run its post-load steps (camera restore, widget commit,
- * capability capture) against a torn-down manager or a scene that never
- * received a model:
- * - `'loaded'` — a model was fetched, parsed, and handed to `setupModel`.
- * - `'cancelled'` — a newer `loadModel` or `dispose()` superseded this load;
+ * Outcome of a `loadModel` call. Check it before running post-load steps
+ * (camera restore, widget commit, capability capture):
+ * - `'loaded'`: a model was fetched, parsed, and set up.
+ * - `'cancelled'`: a newer `loadModel` or `dispose()` superseded this load;
  *   the manager may already be torn down.
- * - `'empty'` — for a normal call, no adapter claimed the file or the URL had
- *   no filename. `{ silent: true }` throws for this case.
- * - `'failed'` — for a normal call, fetching or parsing threw. A silent call
- *   rejects instead of returning this outcome.
+ * - `'empty'`: for a normal call, the URL had no filename, no adapter claimed
+ *   the file, or the adapter produced no model.
+ * - `'failed'`: for a normal call, fetching, parsing, or model setup threw.
+ *
+ * With `{ silent: true }`, the `'empty'` and `'failed'` cases reject instead.
  */
 export type LoadModelOutcome = 'loaded' | 'cancelled' | 'empty' | 'failed'
 
