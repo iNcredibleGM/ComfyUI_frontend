@@ -132,7 +132,12 @@ export class LoaderManager implements LoaderManagerInterface {
         options?.silent
       )
     } catch (error) {
-      if (options?.signal?.aborted) return 'cancelled'
+      if (options?.signal?.aborted) {
+        if (loadId === this.currentLoadId) {
+          this.eventManager.emitEvent('modelLoadingEnd', null)
+        }
+        return 'cancelled'
+      }
       return this.handleLoadError(error, loadId, options)
     }
   }
