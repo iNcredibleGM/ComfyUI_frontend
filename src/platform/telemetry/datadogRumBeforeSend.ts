@@ -1,4 +1,10 @@
-import type { RumBeforeSend, RumErrorEvent } from '@datadog/browser-rum'
+import type {
+  RumActionEvent,
+  RumBeforeSend,
+  RumErrorEvent,
+  RumLongTaskEvent,
+  RumViewEvent
+} from '@datadog/browser-rum'
 
 import { isRumErrorNoise } from '@comfyorg/shared-frontend-utils/telemetry'
 
@@ -80,6 +86,37 @@ function tagRumErrorOrigin(event: RumErrorEvent): void {
   }
 }
 
+function redactRumView(event: Parameters<RumBeforeSend>[0]): void {
+  if (typeof event.view.url === 'string') {
+    event.view.url = redactTelemetryUrls(event.view.url)
+  }
+  if (typeof event.view.referrer === 'string') {
+    event.view.referrer = redactTelemetryUrls(event.view.referrer)
+  }
+}
+
+function redactRumAction(event: RumActionEvent): void {
+  if (event.action.target?.name) {
+    event.action.target.name = redactTelemetryUrls(event.action.target.name)
+  }
+}
+
+function redactRumLongTask(event: RumLongTaskEvent): void {
+  for (const script of event.long_task.scripts ?? []) {
+    if (script.source_url) {
+      script.source_url = redactTelemetryUrls(script.source_url)
+    }
+  }
+}
+
+function redactRumViewPerformance(event: RumViewEvent): void {
+  if (event.view.performance?.lcp?.resource_url) {
+    event.view.performance.lcp.resource_url = redactTelemetryUrls(
+      event.view.performance.lcp.resource_url
+    )
+  }
+}
+
 export const rumBeforeSend: RumBeforeSend = (event) => {
   if (!shouldKeepRumEvent(event)) return false
   if (event.type === 'resource') {
@@ -101,27 +138,10 @@ export const rumBeforeSend: RumBeforeSend = (event) => {
       event.error.resource.url = redactTelemetryUrls(event.error.resource.url)
     }
   }
-  if (typeof event.view.url === 'string') {
-    event.view.url = redactTelemetryUrls(event.view.url)
-  }
-  if (typeof event.view.referrer === 'string') {
-    event.view.referrer = redactTelemetryUrls(event.view.referrer)
-  }
-  if (event.type === 'action' && event.action.target?.name) {
-    event.action.target.name = redactTelemetryUrls(event.action.target.name)
-  }
-  if (event.type === 'long_task') {
-    for (const script of event.long_task.scripts ?? []) {
-      if (script.source_url) {
-        script.source_url = redactTelemetryUrls(script.source_url)
-      }
-    }
-  }
-  if (event.type === 'view' && event.view.performance?.lcp?.resource_url) {
-    event.view.performance.lcp.resource_url = redactTelemetryUrls(
-      event.view.performance.lcp.resource_url
-    )
-  }
+  redactRumView(event)
+  if (event.type === 'action') redactRumAction(event)
+  if (event.type === 'long_task') redactRumLongTask(event)
+  if (event.type === 'view') redactRumViewPerformance(event)
   event.context = redactTelemetryValues(event.context) ?? {}
   return true
 }

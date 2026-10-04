@@ -24,18 +24,22 @@ function redactSentryEvent(event: ErrorEvent, hint: EventHint) {
   }
   filtered.extra = redactTelemetryValues(filtered.extra)
   filtered.contexts = redactSentryContexts(filtered.contexts)
-  if (filtered.request?.url) {
-    filtered.request.url = redactTelemetryUrls(filtered.request.url)
-  }
-  if (filtered.request?.headers?.Referer) {
-    filtered.request.headers.Referer = redactTelemetryUrls(
-      filtered.request.headers.Referer
-    )
-  }
+  redactSentryRequest(filtered)
   for (const exception of filtered.exception?.values ?? []) {
     redactSentryException(exception)
   }
   return filtered
+}
+
+function redactSentryRequest(event: ErrorEvent): void {
+  if (event.request?.url) {
+    event.request.url = redactTelemetryUrls(event.request.url)
+  }
+  if (event.request?.headers?.Referer) {
+    event.request.headers.Referer = redactTelemetryUrls(
+      event.request.headers.Referer
+    )
+  }
 }
 
 function redactSentryContexts(contexts: Contexts | undefined): Contexts {
