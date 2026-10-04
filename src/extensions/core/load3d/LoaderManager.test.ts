@@ -812,6 +812,25 @@ describe('LoaderManager', () => {
       expect(useToastStore().addAlert).not.toHaveBeenCalled()
     })
 
+    it('does not start an adapter load after disposal during adapter selection', async () => {
+      const { lm } = makeLoaderManager()
+      let resolveFetch!: (value: ArrayBuffer) => void
+      vi.mocked(fetchModelData).mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFetch = resolve
+        })
+      )
+
+      const load = lm.loadModel('api/view?filename=scan.ply')
+      await vi.waitFor(() => expect(fetchModelData).toHaveBeenCalledOnce())
+      lm.dispose()
+      resolveFetch(new ArrayBuffer(0))
+
+      await expect(load).resolves.toBe('cancelled')
+      expect(splatLoad).not.toHaveBeenCalled()
+      expect(pointCloudLoad).not.toHaveBeenCalled()
+    })
+
     it('cancels a load disposed while model setup is settling', async () => {
       const { lm, modelManager, eventManager } = makeLoaderManager()
       let resolveSetup!: () => void
