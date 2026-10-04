@@ -510,6 +510,40 @@ describe('LoaderManager', () => {
       expect(consoleError).not.toHaveBeenCalled()
     })
 
+    it('cancels and disposes a load whose parse resolves after the caller aborted', async () => {
+      const controller = new AbortController()
+      const { lm, modelManager, eventManager } = makeLoaderManager()
+      const geometry = new THREE.BufferGeometry()
+      const material = new THREE.MeshBasicMaterial()
+      const model = new THREE.Mesh(geometry, material)
+      const disposeGeometry = vi.spyOn(geometry, 'dispose')
+      const disposeMaterial = vi.spyOn(material, 'dispose')
+      // A parser already running when the caller walks away does not reject:
+      // it finishes and hands back a model the caller no longer wants.
+      meshLoad.mockImplementationOnce(async (ctx: ModelLoadContext) => {
+        controller.abort()
+        ctx.setOriginalModel(model)
+        return loadResult(model)
+      })
+
+      await expect(
+        lm.loadModel('api/view?filename=cube.glb', undefined, {
+          signal: controller.signal
+        })
+      ).resolves.toBe('cancelled')
+
+      expect(modelManager.setupModel).not.toHaveBeenCalled()
+      expect(modelManager.setOriginalModel).not.toHaveBeenCalled()
+      expect(meshDisposeModel).toHaveBeenCalledWith(model)
+      expect(disposeGeometry).toHaveBeenCalledOnce()
+      expect(disposeMaterial).toHaveBeenCalledOnce()
+      expect(eventManager.emitEvent).toHaveBeenCalledWith(
+        'modelLoadingEnd',
+        null
+      )
+      expect(useToastStore().addAlert).not.toHaveBeenCalled()
+    })
+
     it('dispatches .ply via the adapter matches() tiebreaker, not extension order — a splat adapter whose matches() returns false yields to point-cloud', async () => {
       const modelManager =
         makeModelManagerStub() as unknown as ConstructorParameters<

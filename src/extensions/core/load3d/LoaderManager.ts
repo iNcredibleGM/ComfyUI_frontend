@@ -125,6 +125,9 @@ export class LoaderManager implements LoaderManagerInterface {
         options?.silent,
         options?.signal
       )
+      if (options?.signal?.aborted) {
+        return this.cancelAbandonedLoad(result, loadId)
+      }
       return await this.publishLoadResult(
         result,
         loadId,
@@ -133,13 +136,27 @@ export class LoaderManager implements LoaderManagerInterface {
       )
     } catch (error) {
       if (options?.signal?.aborted) {
-        if (loadId === this.currentLoadId) {
-          this.eventManager.emitEvent('modelLoadingEnd', null)
-        }
-        return 'cancelled'
+        return this.cancelAbandonedLoad(null, loadId)
       }
       return this.handleLoadError(error, loadId, options)
     }
+  }
+
+  /**
+   * Give up on a load whose caller aborted. A parser that was already running
+   * cooperates with neither the signal nor `loadId` — it can resolve
+   * successfully, and the caller may never start a newer load — so without
+   * this the abandoned model is installed and reported as `'loaded'`.
+   */
+  private cancelAbandonedLoad(
+    result: (ModelLoadResult & { adapter: ModelAdapter }) | null,
+    loadId: number
+  ): LoadModelOutcome {
+    if (result) this.disposeLoadResult(result)
+    if (loadId === this.currentLoadId) {
+      this.eventManager.emitEvent('modelLoadingEnd', null)
+    }
+    return 'cancelled'
   }
 
   private async publishLoadResult(
@@ -225,12 +242,17 @@ export class LoaderManager implements LoaderManagerInterface {
     return null
   }
 
-  private createLoadContext(loadId: number): ModelLoadContext {
+  private createLoadContext(
+    loadId: number,
+    signal?: AbortSignal
+  ): ModelLoadContext {
     const mm = this.modelManager
     // Adapters write to modelManager synchronously during adapter.load(),
     // before publishLoadResult can check staleness. Gating those writes keeps
-    // a superseded result out of modelManager, so it is safe to dispose.
-    const isCurrent = () => loadId === this.currentLoadId
+    // a superseded result out of modelManager, so it is safe to dispose. An
+    // abandoned load is gated the same way: the caller may not have started a
+    // newer load, so loadId alone would still read as current.
+    const isCurrent = () => loadId === this.currentLoadId && !signal?.aborted
     return {
       setOriginalModel: (model) => {
         if (isCurrent()) mm.setOriginalModel(model)
@@ -290,7 +312,7 @@ export class LoaderManager implements LoaderManagerInterface {
     if (this.disposed) return null
 
     const loadResult = await adapter.load(
-      this.createLoadContext(loadId),
+      this.createLoadContext(loadId, signal),
       path,
       filename,
       fetchBytes
