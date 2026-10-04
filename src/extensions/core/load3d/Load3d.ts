@@ -404,13 +404,6 @@ class Load3d extends Viewport3d {
       options
     )
 
-    // A cancelled/failed/empty load clears adapterRef up-front in
-    // LoaderManager but never calls setupModel, so the viewer's
-    // capability flags (format, gizmo, export) would otherwise keep
-    // advertising the *previous* model over an emptied scene. Only a
-    // successful load runs the post-load camera/animation restore below —
-    // those touch state (`currentModel`, camera) that a cancelled load may
-    // have left mid-teardown.
     if (outcome !== 'loaded') {
       this.hasLoadedModel = false
       return outcome
