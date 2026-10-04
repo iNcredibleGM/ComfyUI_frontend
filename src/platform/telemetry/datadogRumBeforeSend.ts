@@ -64,7 +64,6 @@ function isConsoleEchoOfReportedAssertion(event: RumErrorEvent): boolean {
 function shouldKeepRumEvent(event: Parameters<RumBeforeSend>[0]): boolean {
   if (event.type !== 'error') return true
   if (isConsoleEchoOfReportedAssertion(event)) return false
-
   return !isRumErrorNoise(event.error)
 }
 
@@ -87,10 +86,8 @@ function tagRumErrorOrigin(event: RumErrorEvent): void {
 }
 
 function redactRumView(event: Parameters<RumBeforeSend>[0]): void {
-  if (typeof event.view.url === 'string') {
-    event.view.url = redactTelemetryUrls(event.view.url)
-  }
-  if (typeof event.view.referrer === 'string') {
+  event.view.url = redactTelemetryUrls(event.view.url)
+  if (event.view.referrer) {
     event.view.referrer = redactTelemetryUrls(event.view.referrer)
   }
 }
@@ -105,6 +102,10 @@ function redactRumLongTask(event: RumLongTaskEvent): void {
   for (const script of event.long_task.scripts ?? []) {
     if (script.source_url) {
       script.source_url = redactTelemetryUrls(script.source_url)
+    }
+    // A `classic-script` invoker is the script's own `src`, query string included.
+    if (script.invoker) {
+      script.invoker = redactTelemetryUrls(script.invoker)
     }
   }
 }

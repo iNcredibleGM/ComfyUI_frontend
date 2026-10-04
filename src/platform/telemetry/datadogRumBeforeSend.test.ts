@@ -1,5 +1,11 @@
 import { fromPartial } from '@total-typescript/shoehorn'
-import type { RumErrorEvent, RumResourceEvent } from '@datadog/browser-rum'
+import type {
+  RumActionEvent,
+  RumErrorEvent,
+  RumLongTaskEvent,
+  RumResourceEvent,
+  RumViewEvent
+} from '@datadog/browser-rum'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setAssertReporter } from '@/base/assert'
@@ -152,6 +158,54 @@ describe('rumBeforeSend', () => {
     expect(event.context).toEqual({
       model: { source: 'https://example.com/model.glb' }
     })
+  })
+
+  it('redacts URL secrets from long-task script sources and invokers', () => {
+    const secretUrl = 'https://user:secret@example.com/model.glb?token=private'
+    const event = fromPartial<RumLongTaskEvent>({
+      type: 'long_task',
+      long_task: {
+        scripts: [{ source_url: secretUrl, invoker: secretUrl }]
+      },
+      view: { url: secretUrl, referrer: secretUrl }
+    })
+
+    expect(rumBeforeSend(event, fromPartial({}))).toBe(true)
+    expect(event.long_task.scripts).toEqual([
+      {
+        source_url: 'https://example.com/model.glb',
+        invoker: 'https://example.com/model.glb'
+      }
+    ])
+  })
+
+  it('redacts URL secrets from action targets', () => {
+    const secretUrl = 'https://user:secret@example.com/model.glb?token=private'
+    const event = fromPartial<RumActionEvent>({
+      type: 'action',
+      action: { target: { name: `open ${secretUrl}` } },
+      view: { url: secretUrl, referrer: secretUrl }
+    })
+
+    expect(rumBeforeSend(event, fromPartial({}))).toBe(true)
+    expect(event.action.target?.name).toBe('open https://example.com/model.glb')
+  })
+
+  it('redacts URL secrets from the largest-contentful-paint resource', () => {
+    const secretUrl = 'https://user:secret@example.com/model.glb?token=private'
+    const event = fromPartial<RumViewEvent>({
+      type: 'view',
+      view: {
+        url: secretUrl,
+        referrer: secretUrl,
+        performance: { lcp: { resource_url: secretUrl } }
+      }
+    })
+
+    expect(rumBeforeSend(event, fromPartial({}))).toBe(true)
+    expect(event.view.performance?.lcp?.resource_url).toBe(
+      'https://example.com/model.glb'
+    )
   })
 
   it('keeps the console copy while no reporter exists to replace it', () => {

@@ -1,6 +1,13 @@
 import type { App } from 'vue'
 import { browserApiErrorsIntegration, init as sentryInit } from '@sentry/vue'
-import type { Contexts, ErrorEvent, EventHint, Exception } from '@sentry/vue'
+import type {
+  Breadcrumb,
+  Contexts,
+  ErrorEvent,
+  Event,
+  EventHint,
+  Exception
+} from '@sentry/vue'
 
 import { sentryThirdPartyErrorFilter } from './thirdPartyErrorNoise'
 import {
@@ -8,30 +15,55 @@ import {
   redactTelemetryValues
 } from './redactTelemetryUrls'
 
+/** `@sentry/vue` re-exports neither `TransactionEvent` nor `SpanJSON`. */
+type SentryOptions = NonNullable<Parameters<typeof sentryInit>[0]>
+type SentryTransactionEvent = Parameters<
+  NonNullable<SentryOptions['beforeSendTransaction']>
+>[0]
+type SentrySpan = Parameters<NonNullable<SentryOptions['beforeSendSpan']>>[0]
+
 function redactSentryEvent(event: ErrorEvent, hint: EventHint) {
   const filtered = sentryThirdPartyErrorFilter(event, hint)
   if (!filtered) return null
-  if (filtered.message) {
-    filtered.message = redactTelemetryUrls(filtered.message)
-  }
-  if (filtered.tags) {
-    filtered.tags = Object.fromEntries(
-      Object.entries(filtered.tags).map(([key, value]) => [
-        key,
-        typeof value === 'string' ? redactTelemetryUrls(value) : value
-      ])
-    )
-  }
-  filtered.extra = redactTelemetryValues(filtered.extra)
-  filtered.contexts = redactSentryContexts(filtered.contexts)
-  redactSentryRequest(filtered)
+  redactSharedSentryEventFields(filtered)
   for (const exception of filtered.exception?.values ?? []) {
     redactSentryException(exception)
   }
   return filtered
 }
 
-function redactSentryRequest(event: ErrorEvent): void {
+/**
+ * `beforeSend` runs on error events only. A sampled transaction carries the
+ * same page URL and referrer that `HttpContext` copies onto an error, so it
+ * needs the shared pass of its own.
+ */
+function redactSentryTransaction(event: SentryTransactionEvent) {
+  redactSharedSentryEventFields(event)
+  return event
+}
+
+/** Redact the URL-bearing fields an error and a transaction both carry. */
+function redactSharedSentryEventFields(event: Event): void {
+  if (event.message) {
+    event.message = redactTelemetryUrls(event.message)
+  }
+  if (event.transaction) {
+    event.transaction = redactTelemetryUrls(event.transaction)
+  }
+  if (event.tags) {
+    event.tags = Object.fromEntries(
+      Object.entries(event.tags).map(([key, value]) => [
+        key,
+        typeof value === 'string' ? redactTelemetryUrls(value) : value
+      ])
+    )
+  }
+  event.extra = redactTelemetryValues(event.extra)
+  event.contexts = redactSentryContexts(event.contexts)
+  redactSentryRequest(event)
+}
+
+function redactSentryRequest(event: Event): void {
   if (event.request?.url) {
     event.request.url = redactTelemetryUrls(event.request.url)
   }
@@ -49,6 +81,32 @@ function redactSentryContexts(contexts: Contexts | undefined): Contexts {
       context ? redactTelemetryValues(context) : context
     ])
   )
+}
+
+function redactSentryBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb {
+  return {
+    ...breadcrumb,
+    message: breadcrumb.message
+      ? redactTelemetryUrls(breadcrumb.message)
+      : breadcrumb.message,
+    data: redactTelemetryValues(breadcrumb.data)
+  }
+}
+
+function redactSentrySpan(span: SentrySpan): SentrySpan {
+  if (span.description) {
+    span.description = redactTelemetryUrls(span.description)
+  }
+  for (const [key, value] of Object.entries(span.data)) {
+    if (typeof value === 'string') {
+      span.data[key] = redactTelemetryUrls(value)
+    } else if (Array.isArray(value)) {
+      span.data[key] = value.map((item) =>
+        typeof item === 'string' ? redactTelemetryUrls(item) : item
+      ) as typeof value
+    }
+  }
+  return span
 }
 
 function redactSentryException(exception: Exception): void {
@@ -81,28 +139,9 @@ export function initSentry({
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 0,
     beforeSend: redactSentryEvent,
-    beforeBreadcrumb: (breadcrumb) => ({
-      ...breadcrumb,
-      message: breadcrumb.message
-        ? redactTelemetryUrls(breadcrumb.message)
-        : breadcrumb.message,
-      data: redactTelemetryValues(breadcrumb.data)
-    }),
-    beforeSendSpan: (span) => {
-      if (span.description) {
-        span.description = redactTelemetryUrls(span.description)
-      }
-      for (const [key, value] of Object.entries(span.data)) {
-        if (typeof value === 'string') {
-          span.data[key] = redactTelemetryUrls(value)
-        } else if (Array.isArray(value)) {
-          span.data[key] = value.map((item) =>
-            typeof item === 'string' ? redactTelemetryUrls(item) : item
-          ) as typeof value
-        }
-      }
-      return span
-    },
+    beforeSendTransaction: redactSentryTransaction,
+    beforeBreadcrumb: redactSentryBreadcrumb,
+    beforeSendSpan: redactSentrySpan,
     // Only set these for non-cloud builds
     ...(isCloud
       ? {

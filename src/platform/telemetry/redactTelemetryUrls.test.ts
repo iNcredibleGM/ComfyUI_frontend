@@ -70,6 +70,51 @@ describe('redactTelemetryUrls', () => {
       expected: '/api/view'
     },
     {
+      kind: 'root-relative single-character segment',
+      input: 'GET /v?token=SECRET failed',
+      expected: 'GET /v failed'
+    },
+    {
+      kind: 'root-relative nested single-character segments',
+      input: 'GET /a/b?token=SECRET failed',
+      expected: 'GET /a/b failed'
+    },
+    {
+      kind: 'root-relative digit-led segment',
+      input: 'GET /1a?token=SECRET failed',
+      expected: 'GET /1a failed'
+    },
+    {
+      kind: 'uppercase scheme',
+      input: 'HTTPS://user:secret@example.com/model.glb?token=private',
+      expected: 'HTTPS://example.com/model.glb'
+    },
+    {
+      kind: 'IPv6 authority with credentials',
+      input: 'http://user:secret@[::1]:8188/model.glb?token=private',
+      expected: 'http://[::1]:8188/model.glb'
+    },
+    {
+      kind: 'credentials with no scheme and no path',
+      input: '//user:secret@example.com?token=private',
+      expected: '//example.com'
+    },
+    {
+      kind: 'URL nested in an outer query',
+      input: 'https://a.test/cb?next=https%3A%2F%2Fb.test%2F%3Ftoken%3Dprivate',
+      expected: 'https://a.test/cb'
+    },
+    {
+      kind: 'empty authority',
+      input: 'https:///model.glb?token=private',
+      expected: 'https:///model.glb'
+    },
+    {
+      kind: 'scheme with no authority',
+      input: 'https://',
+      expected: 'https://'
+    },
+    {
       kind: 'single-segment relative query',
       input: 'model.glb?token=SECRET',
       expected: 'model.glb'
@@ -79,15 +124,26 @@ describe('redactTelemetryUrls', () => {
       input: 'https://h/api/view?filter[id]=1&token=SECRET',
       expected: 'https://h/api/view'
     }
-  ])(
-    '$kind',
-    ({ input, expected }) => {
-      it('redacts URL metadata', () => {
-        expect(redactTelemetryUrls(input)).toBe(expected)
-      })
-    },
-    500
-  )
+  ])('$kind', ({ input, expected }) => {
+    it('redacts URL metadata', () => {
+      expect(redactTelemetryUrls(input)).toBe(expected)
+    })
+  })
+
+  describe.for([
+    { kind: 'a fraction with a query suffix', text: 'ratio 1/2?token=secret' },
+    { kind: 'a progress fraction', text: 'progress 3/4 done' },
+    { kind: 'a route with an id', text: 'GET /api/jobs/42 -> 500' },
+    { kind: 'a route with no query', text: '/api/userdata/workflows' },
+    { kind: 'an absolute file path', text: '/home/u/models/x.safetensors' },
+    { kind: 'a Windows file path', text: 'C:\\Users\\u\\workflow.json' },
+    { kind: 'a version string', text: 'comfyui 1.2.3 ready' },
+    { kind: 'a bare question', text: 'Can this work?' }
+  ])('$kind', ({ text }) => {
+    it('survives redaction unchanged', () => {
+      expect(redactTelemetryUrls(text)).toBe(text)
+    })
+  })
 
   it('redacts adjacent URLs without consuming punctuation or stack locations', () => {
     expect(
@@ -118,12 +174,6 @@ describe('redactTelemetryUrls', () => {
         'Can this work? proxy/https://user:secret@c.test/z?token=3'
       )
     ).toBe('Can this work? proxy/https://c.test/z')
-  })
-
-  it('preserves non-URL path-like text with a query suffix', () => {
-    expect(redactTelemetryUrls('ratio 1/2?token=secret')).toBe(
-      'ratio 1/2?token=secret'
-    )
   })
 
   it('redacts query data from relative path references', () => {

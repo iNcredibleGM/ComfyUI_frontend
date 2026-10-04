@@ -3,8 +3,14 @@ export function redactTelemetryUrls(text: string): string {
   return text.replace(URL_TOKEN_PATTERN, redactUrlToken)
 }
 
+/**
+ * The root-relative alternative starts at a non-digit, or at a digit followed
+ * by a second path character. That keeps `/v?token=…` and `/a/b?token=…`
+ * redacted while leaving a bare fraction such as `1/2?x` as ordinary text, so
+ * non-URL messages keep their Sentry grouping.
+ */
 const URL_TOKEN_PATTERN =
-  /(?:https?:)?\/\/[^\s"'<>]+|\/(?!\/|https?:\/\/)[A-Za-z0-9._~%-]{2}[^\s"'<>]*|\b[A-Za-z0-9_~%-]+\.[A-Za-z0-9._~%-]+(?:\/[A-Za-z0-9._~%-]+)*[?#][^\s"'<>]*/g
+  /(?:https?:)?\/\/[^\s"'<>]+|\/(?!\/|https?:\/\/)(?:[A-Za-z._~%-]|\d[A-Za-z0-9._~%-])[^\s"'<>]*|\b[A-Za-z0-9_~%-]+\.[A-Za-z0-9._~%-]+(?:\/[A-Za-z0-9._~%-]+)*[?#][^\s"'<>]*/g
 
 function redactUrlToken(token: string): string {
   let redacted = ''
@@ -116,6 +122,17 @@ const REDACTION_SENTINEL = '[Redacted]'
 const MAX_REDACTION_DEPTH = 32
 const MAX_REDACTION_NODES = 1_000
 
+/**
+ * Copy a telemetry payload with URL metadata removed from every reachable
+ * string.
+ *
+ * Only plain records, arrays, `Error`s, `URL`s and primitives survive the copy.
+ * Every other object — `Date`, `Map`, `Request`, class instances — becomes
+ * `[Redacted]`, because inspecting it safely is not possible for an arbitrary
+ * accessor. Accessor properties are dropped rather than invoked for the same
+ * reason. Traversal is bounded by depth and node count, and anything past
+ * either bound also becomes `[Redacted]`.
+ */
 export function redactTelemetryValues(
   values: Record<string, unknown> | undefined
 ): Record<string, unknown> | undefined {
@@ -175,11 +192,11 @@ function guardedRedactionValue(
   context: RedactionContext,
   depth: number
 ): { value: unknown } | undefined {
+  if (context.ancestors.has(value)) return { value: '[Circular]' }
+  if (context.memo.has(value)) return { value: context.memo.get(value) }
   if (depth >= MAX_REDACTION_DEPTH || context.nodesRemaining-- <= 0) {
     return { value: REDACTION_SENTINEL }
   }
-  if (context.ancestors.has(value)) return { value: '[Circular]' }
-  if (context.memo.has(value)) return { value: context.memo.get(value) }
 }
 
 function redactArray(

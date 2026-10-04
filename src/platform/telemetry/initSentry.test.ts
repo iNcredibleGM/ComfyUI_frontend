@@ -4,7 +4,7 @@ import type {
 } from '@sentry/vue'
 import { fromPartial } from '@total-typescript/shoehorn'
 import { createApp } from 'vue'
-import { expect, it, vi } from 'vitest'
+import { assert, expect, it, vi } from 'vitest'
 
 const { sentryInit, browserApiErrorsIntegration } = vi.hoisted(() => ({
   sentryInit: vi.fn<typeof sentryInitContract>(),
@@ -120,6 +120,50 @@ it('redacts URL secrets from events, breadcrumbs, and spans', () => {
     data: {
       source: 'https://example.com/model.glb',
       sources: ['https://example.com/model.glb', null, 'safe']
+    }
+  })
+})
+
+it('redacts URL secrets from sampled transactions', () => {
+  initSentry({
+    app: createApp({}),
+    dsn: 'https://public@example.invalid/1',
+    enabled: true,
+    isCloud: true
+  })
+
+  const options = sentryInit.mock.calls.at(-1)?.[0]
+  const secretUrl = 'https://user:secret@example.com/model.glb?token=private'
+  assert.exists(options?.beforeSendTransaction)
+
+  expect(
+    options.beforeSendTransaction(
+      fromPartial({
+        type: 'transaction',
+        transaction: '/callback?code=private',
+        tags: { source: secretUrl },
+        extra: { source: secretUrl },
+        contexts: {
+          trace: { trace_id: 'abc', span_id: 'def', source: secretUrl }
+        },
+        request: { url: secretUrl, headers: { Referer: secretUrl } }
+      }),
+      {}
+    )
+  ).toMatchObject({
+    transaction: '/callback',
+    tags: { source: 'https://example.com/model.glb' },
+    extra: { source: 'https://example.com/model.glb' },
+    contexts: {
+      trace: {
+        trace_id: 'abc',
+        span_id: 'def',
+        source: 'https://example.com/model.glb'
+      }
+    },
+    request: {
+      url: 'https://example.com/model.glb',
+      headers: { Referer: 'https://example.com/model.glb' }
     }
   })
 })
