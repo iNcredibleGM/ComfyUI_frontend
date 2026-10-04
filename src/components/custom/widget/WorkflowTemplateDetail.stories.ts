@@ -81,7 +81,7 @@ export const OpenNow: Story = {
             ...checkpoint,
             status: {
               kind: 'manual',
-              label: t('templateWorkflows.detail.unavailable'),
+              label: t('templateWorkflows.detail.getItManually'),
               href: 'https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0'
             }
           },
