@@ -220,12 +220,9 @@ export class LoaderManager implements LoaderManagerInterface {
 
   private createLoadContext(loadId: number): ModelLoadContext {
     const mm = this.modelManager
-    // Adapters call setOriginalModel / registerOriginalMaterial synchronously
-    // during adapter.load(), before loadModel can check whether this load is
-    // still current. Gate those writes on identity here so a superseded
-    // load's result can never land in modelManager — that is what makes it
-    // safe to unconditionally dispose a stale result afterward (see the
-    // loadId !== this.currentLoadId branch in loadModel).
+    // Adapters write to modelManager synchronously during adapter.load(),
+    // before publishLoadResult can check staleness. Gating those writes keeps
+    // a superseded result out of modelManager, so it is safe to dispose.
     const isCurrent = () => loadId === this.currentLoadId
     return {
       setOriginalModel: (model) => {
