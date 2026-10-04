@@ -110,9 +110,8 @@ export class LoaderManager implements LoaderManagerInterface {
       const fileExtension = this.setOriginalFileName(url, originalFileName)
 
       if (!fileExtension) {
-        // The agent path may pass an untrusted, credential-bearing URL —
-        // never embed it in a thrown/reported error (see the redaction in
-        // the catch block and in modelThumbnail.ts's reportError call).
+        // The agent path may pass a credential-bearing URL, so keep this
+        // error URL-free; the thumbnail caller redacts what it reports.
         if (options?.silent) throw new TypeError('Unknown model file type')
         useToastStore().addAlert(t('toastMessages.couldNotDetermineFileType'))
         this.eventManager.emitEvent('modelLoadingEnd', null)
