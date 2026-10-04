@@ -351,10 +351,9 @@ describe('generateModelThumbnail', () => {
     })
     expect(stuck.remove).toHaveBeenCalledTimes(1)
     expect(reportErrorMock).not.toHaveBeenCalled()
-    expect(next.loadModel).toHaveBeenCalledWith('/next.glb', undefined, {
-      signal: expect.any(AbortSignal),
-      silent: true
-    })
+    expect(vi.mocked(stuck.loadModel).mock.calls[0][2]?.signal?.aborted).toBe(
+      true
+    )
     pendingLoad.resolve('cancelled')
     await vi.advanceTimersByTimeAsync(0)
   })

@@ -485,6 +485,31 @@ describe('LoaderManager', () => {
       )
     })
 
+    it('classifies an aborted current request as cancelled without reporting it', async () => {
+      const controller = new AbortController()
+      const { lm, eventManager } = makeLoaderManager()
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      meshLoad.mockImplementationOnce(async () => {
+        controller.abort()
+        throw new DOMException('The operation was aborted', 'AbortError')
+      })
+
+      await expect(
+        lm.loadModel('api/view?filename=cube.glb', undefined, {
+          signal: controller.signal
+        })
+      ).resolves.toBe('cancelled')
+
+      expect(eventManager.emitEvent).not.toHaveBeenCalledWith(
+        'modelLoadingEnd',
+        null
+      )
+      expect(useToastStore().addAlert).not.toHaveBeenCalled()
+      expect(consoleError).not.toHaveBeenCalled()
+    })
+
     it('dispatches .ply via the adapter matches() tiebreaker, not extension order — a splat adapter whose matches() returns false yields to point-cloud', async () => {
       const modelManager =
         makeModelManagerStub() as unknown as ConstructorParameters<

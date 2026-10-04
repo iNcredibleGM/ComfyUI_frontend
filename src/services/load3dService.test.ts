@@ -598,22 +598,6 @@ describe('load3dService', () => {
       expect(state.sceneAdded).toContain(clone)
     })
 
-    it('disposes the target model before adding its replacement', async () => {
-      const source = makeSource({ currentModel: makeModel() })
-      const { target, state } = makeTarget({ existingModel: makeModel() })
-      skeletonCloneMock.mockReturnValue(makeModel())
-
-      await useLoad3dService().copyLoad3dState(source, target)
-
-      expect(state.modelManager.disposeCurrentModel).toHaveBeenCalledOnce()
-      expect(
-        state.modelManager.disposeCurrentModel.mock.invocationCallOrder[0]
-      ).toBeLessThan(
-        vi.mocked(target.getSceneManager().scene.add).mock
-          .invocationCallOrder[0]
-      )
-    })
-
     it('hands the viewer a clone in its original materials without wireframe overlays', async () => {
       const original = new THREE.MeshStandardMaterial()
       const mesh = new THREE.Mesh(

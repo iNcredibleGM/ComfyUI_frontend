@@ -521,6 +521,18 @@ describe('SceneModelManager', () => {
       expect(textureDispose).not.toHaveBeenCalled()
       expect(disposeModelViaAdapter).toHaveBeenCalledWith(model)
     })
+
+    it('preserves source identity while replacing the current model', async () => {
+      const { manager } = createManager()
+      await manager.setupModel(createMeshModel())
+      manager.originalFileName = 'source.ply'
+      manager.originalURL = 'api/view?filename=source.ply'
+
+      manager.disposeCurrentModel()
+
+      expect(manager.originalFileName).toBe('source.ply')
+      expect(manager.originalURL).toBe('api/view?filename=source.ply')
+    })
   })
 
   describe('reset', () => {
@@ -1097,16 +1109,14 @@ describe('SceneModelManager', () => {
 
     it('disposes parked original materials while rebuilding', () => {
       const { manager } = createPLYManager()
-      const model = manager.currentModel
-      assert.instanceOf(model, THREE.Group)
-      const mesh = model.children[0]
+      manager.setMaterialMode('wireframe')
+      const wireframeModel = manager.currentModel
+      assert.instanceOf(wireframeModel, THREE.Group)
+      const mesh = wireframeModel.children[0]
       assert.instanceOf(mesh, THREE.Mesh)
-      assert(!Array.isArray(mesh.material))
-      const originalMaterial = mesh.material
+      const originalMaterial = manager.originalMaterials.get(mesh)
+      assert.instanceOf(originalMaterial, THREE.Material)
       const dispose = vi.spyOn(originalMaterial, 'dispose')
-      manager.originalMaterials.set(mesh, originalMaterial)
-      mesh.material = manager.wireframeMaterial
-      manager.materialMode = 'wireframe'
 
       manager.setMaterialMode('pointCloud')
 

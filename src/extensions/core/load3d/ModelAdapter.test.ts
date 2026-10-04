@@ -58,9 +58,8 @@ describe('fetchModelData', () => {
       'a b c.ply'
     )
 
-    expect(api.fetchApi).toHaveBeenCalledWith(
-      '/view?type=input&subfolder=&filename=a%20b%20c.ply',
-      { signal: undefined }
+    expect(vi.mocked(api.fetchApi).mock.calls[0][0]).toBe(
+      '/view?type=input&subfolder=&filename=a%20b%20c.ply'
     )
   })
 
@@ -72,9 +71,9 @@ describe('fetchModelData', () => {
 
     await fetchModelData('custom?filename=', 'scene.splat')
 
-    expect(api.fetchApi).toHaveBeenCalledWith('/custom?filename=scene.splat', {
-      signal: undefined
-    })
+    expect(vi.mocked(api.fetchApi).mock.calls[0][0]).toBe(
+      '/custom?filename=scene.splat'
+    )
   })
 
   it('forwards cancellation to the model request', async () => {

@@ -132,6 +132,7 @@ export class LoaderManager implements LoaderManagerInterface {
         options?.silent
       )
     } catch (error) {
+      if (options?.signal?.aborted) return 'cancelled'
       return this.handleLoadError(error, loadId, options)
     }
   }

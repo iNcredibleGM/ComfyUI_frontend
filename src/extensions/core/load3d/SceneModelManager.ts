@@ -440,7 +440,10 @@ export class SceneModelManager implements ModelManagerInterface {
     this.restoreOriginalMaterials(model)
     disposeObject3D(model, this.preservedMaterials, appliedTextures)
     this.disposeModelViaAdapter(model)
+    const { originalFileName, originalURL } = this
     this.reset()
+    this.originalFileName = originalFileName
+    this.originalURL = originalURL
   }
 
   clearModel(): void {

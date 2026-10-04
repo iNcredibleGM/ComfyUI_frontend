@@ -9,7 +9,8 @@ import { faceSizesFor } from './quadWireframe/faceSizesRegistry'
 
 const stlLoaderStub = {
   setPath: vi.fn(),
-  loadAsync: vi.fn<(filename: string) => Promise<THREE.BufferGeometry>>()
+  loadAsync: vi.fn<(filename: string) => Promise<THREE.BufferGeometry>>(),
+  parse: vi.fn<(bytes: ArrayBuffer) => THREE.BufferGeometry>()
 }
 const fbxLoaderStub = {
   setPath: vi.fn(),
@@ -19,7 +20,11 @@ const fbxLoaderStub = {
 vi.mock(import('@comfyorg/quad-wireframe-three'), { spy: true })
 const gltfLoaderStub = {
   setPath: vi.fn(),
-  loadAsync: vi.fn<(filename: string) => Promise<{ scene: THREE.Object3D }>>()
+  loadAsync: vi.fn<(filename: string) => Promise<{ scene: THREE.Object3D }>>(),
+  parseAsync:
+    vi.fn<
+      (bytes: ArrayBuffer, path: string) => Promise<{ scene: THREE.Object3D }>
+    >()
 }
 const mtlLoaderStub = {
   setPath: vi.fn(),
@@ -29,7 +34,10 @@ const objLoaderStub = {
   setWorkerUrl: vi.fn(),
   setMaterials: vi.fn(),
   setBaseObject3d: vi.fn(),
-  loadAsync: vi.fn<(url: string) => Promise<THREE.Object3D>>()
+  loadAsync: vi.fn<(url: string) => Promise<THREE.Object3D>>(),
+  setCallbackOnLoad:
+    vi.fn<(callback: (model: THREE.Object3D) => void) => void>(),
+  parse: vi.fn<(bytes: ArrayBuffer) => THREE.Object3D>()
 }
 
 vi.mock(import('three/examples/jsm/loaders/STLLoader'), () => ({
@@ -37,6 +45,7 @@ vi.mock(import('three/examples/jsm/loaders/STLLoader'), () => ({
     class {
       setPath = stlLoaderStub.setPath
       loadAsync = stlLoaderStub.loadAsync
+      parse = stlLoaderStub.parse
     }
   )
 }))
@@ -56,6 +65,7 @@ vi.mock(import('three/examples/jsm/loaders/GLTFLoader'), () => ({
     class {
       setPath = gltfLoaderStub.setPath
       loadAsync = gltfLoaderStub.loadAsync
+      parseAsync = gltfLoaderStub.parseAsync
     }
   )
 }))
@@ -76,6 +86,8 @@ vi.mock(import('wwobjloader2'), () => ({
       setMaterials = objLoaderStub.setMaterials
       setBaseObject3d = objLoaderStub.setBaseObject3d
       loadAsync = objLoaderStub.loadAsync
+      setCallbackOnLoad = objLoaderStub.setCallbackOnLoad
+      parse = objLoaderStub.parse
     }
   ),
   MtlObjBridge: fromAny({
@@ -177,6 +189,26 @@ describe('MeshModelAdapter', () => {
       expect(ctx.setOriginalModel).toHaveBeenCalledWith(geometry)
       expect(result!.object).toBeInstanceOf(THREE.Group)
       expect(result!.object.children[0]).toBeInstanceOf(THREE.Mesh)
+    })
+
+    it('parses abortable fetched bytes without starting a direct request', async () => {
+      const bytes = new ArrayBuffer(8)
+      const geometry = new THREE.BufferGeometry()
+      stlLoaderStub.parse.mockReturnValue(geometry)
+      const fetchBytes = vi.fn().mockResolvedValue(bytes)
+
+      const adapter = new MeshModelAdapter()
+      const result = await adapter.load(
+        makeContext(),
+        '/api/view/',
+        'model.stl',
+        fetchBytes
+      )
+
+      expect(fetchBytes).toHaveBeenCalledOnce()
+      expect(stlLoaderStub.parse).toHaveBeenCalledWith(bytes)
+      expect(stlLoaderStub.loadAsync).not.toHaveBeenCalled()
+      expect(result?.object).toBeInstanceOf(THREE.Group)
     })
   })
 
