@@ -239,7 +239,7 @@ describe('redactTelemetryValues', () => {
   })
 
   it('fails closed when a rejected value cannot be stringified', () => {
-    const value = Object.create(null) as object
+    const value: object = Object.create(null)
 
     expect(redactTelemetryError(value).message).toBe('[Redacted]')
   })
