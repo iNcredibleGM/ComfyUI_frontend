@@ -143,10 +143,8 @@ export class LoaderManager implements LoaderManagerInterface {
   }
 
   /**
-   * Give up on a load whose caller aborted. A parser that was already running
-   * cooperates with neither the signal nor `loadId` — it can resolve
-   * successfully, and the caller may never start a newer load — so without
-   * this the abandoned model is installed and reported as `'loaded'`.
+   * Parsers ignore the signal, so an aborted load can still resolve — and
+   * `loadId` does not catch it when the caller starts no newer load.
    */
   private cancelAbandonedLoad(
     result: (ModelLoadResult & { adapter: ModelAdapter }) | null,
@@ -248,10 +246,9 @@ export class LoaderManager implements LoaderManagerInterface {
   ): ModelLoadContext {
     const mm = this.modelManager
     // Adapters write to modelManager synchronously during adapter.load(),
-    // before publishLoadResult can check staleness. Gating those writes keeps
-    // a superseded result out of modelManager, so it is safe to dispose. An
-    // abandoned load is gated the same way: the caller may not have started a
-    // newer load, so loadId alone would still read as current.
+    // before staleness or an abort can be checked. Gating those writes keeps a
+    // superseded or abandoned result out of modelManager, so it is safe to
+    // dispose.
     const isCurrent = () => loadId === this.currentLoadId && !signal?.aborted
     return {
       setOriginalModel: (model) => {

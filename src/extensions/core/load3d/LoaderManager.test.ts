@@ -518,8 +518,6 @@ describe('LoaderManager', () => {
       const model = new THREE.Mesh(geometry, material)
       const disposeGeometry = vi.spyOn(geometry, 'dispose')
       const disposeMaterial = vi.spyOn(material, 'dispose')
-      // A parser already running when the caller walks away does not reject:
-      // it finishes and hands back a model the caller no longer wants.
       meshLoad.mockImplementationOnce(async (ctx: ModelLoadContext) => {
         controller.abort()
         ctx.setOriginalModel(model)
