@@ -98,7 +98,7 @@ describe('generateModelThumbnail', () => {
     expect(createLoad3d).not.toHaveBeenCalled()
   })
 
-  it('advances the queue without releasing the underlying work slot', async () => {
+  it('advances the queue and bounds underlying work slot retention', async () => {
     const pendingLoad = deferred<'cancelled'>()
     const stalled = mockInstance({
       loadModel: vi.fn<Load3d['loadModel']>(() => pendingLoad.promise)
@@ -125,11 +125,15 @@ describe('generateModelThumbnail', () => {
       dataUrl: 'data:image/png;base64,thumb'
     })
     expect(stalled.remove).toHaveBeenCalledOnce()
-    expect(vi.getTimerCount()).toBe(0)
     expect(reportErrorMock).not.toHaveBeenCalled()
     expect(releaseSharedRenderer).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(releaseSharedRenderer).toHaveBeenCalledOnce()
+
     pendingLoad.resolve('cancelled')
     await vi.advanceTimersByTimeAsync(0)
+    expect(releaseSharedRenderer).toHaveBeenCalledOnce()
   })
 
   it('skips a queued render whose caller aborted before its turn', async () => {

@@ -10,6 +10,7 @@ import type { SharedRendererHandle } from '@/renderer/three/sharedWebGLRenderer'
 
 let queue: Promise<unknown> = Promise.resolve()
 const MODEL_LOAD_TIMEOUT_MS = 15_000
+const BACKGROUND_SETTLE_GRACE_MS = 15_000
 const MAX_QUEUED_RENDERS = 32
 const RENDER_CANCELLED = new Error('Model thumbnail render cancelled')
 const RENDER_FAILED = new Error('Model thumbnail load did not complete')
@@ -34,8 +35,8 @@ export type ModelThumbnailResult =
  *
  * A render that outlives its deadline, or whose `callerSignal` aborts, is
  * given up on: its viewer is torn down and the queue moves on. Underlying
- * transfer and parse work may continue, so its admission slot and renderer
- * lease remain held until that work settles.
+ * parse work may continue briefly, so its admission slot and renderer lease
+ * remain held until that work settles or a bounded grace period expires.
  */
 export function generateModelThumbnail(
   modelUrl: string,
@@ -141,11 +142,30 @@ function renderThumbnailJob(
   })
   return {
     result,
-    completed: operation.then(
-      () => {},
-      () => {}
-    )
+    completed: boundedCompletion(operation, result)
   }
+}
+
+function boundedCompletion(
+  operation: Promise<string>,
+  result: Promise<string>
+): Promise<void> {
+  return new Promise((resolve) => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let completed = false
+    function finish(): void {
+      if (completed) return
+      completed = true
+      if (timer) clearTimeout(timer)
+      resolve()
+    }
+    function startGracePeriod(): void {
+      if (completed || timer) return
+      timer = setTimeout(finish, BACKGROUND_SETTLE_GRACE_MS)
+    }
+    void operation.then(finish, finish)
+    void result.then(startGracePeriod, startGracePeriod)
+  })
 }
 
 async function renderThumbnailInner(
