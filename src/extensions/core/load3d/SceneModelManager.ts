@@ -33,9 +33,9 @@ export function disposeObject3D(
   preservedTextures: ReadonlySet<THREE.Texture> = new Set()
 ): void {
   const preserved =
-    preservedMaterials instanceof Set
-      ? preservedMaterials
-      : new Set([preservedMaterials])
+    preservedMaterials instanceof THREE.Material
+      ? new Set([preservedMaterials])
+      : preservedMaterials
   object.traverse((child) => {
     if (!isResourceRenderable(child)) return
     child.geometry.dispose()
